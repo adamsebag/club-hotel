@@ -1,0 +1,512 @@
+
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ניהול טיפולי ספא</title>
+<style>
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:#f4f5f7;
+  color:#242936;
+  font-family:Arial,sans-serif;
+}
+header {
+  background:#263c37;
+  color:white;
+  text-align:center;
+  padding:25px 15px;
+}
+header h1 { margin:0 0 8px; }
+main {
+  max-width:750px;
+  margin:auto;
+  padding:16px;
+}
+.card {
+  background:white;
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 2px 10px #0000000b;
+}
+h2 { font-size:19px; margin-top:0; }
+label {
+  display:block;
+  margin:12px 0 6px;
+  font-weight:bold;
+}
+input,select {
+  width:100%;
+  padding:12px;
+  border:1px solid #d8dce2;
+  border-radius:8px;
+  font-size:16px;
+  background:white;
+}
+button {
+  border:0;
+  border-radius:9px;
+  padding:13px;
+  font-size:15px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.primary {
+  background:#263c37;
+  color:white;
+  width:100%;
+  margin-top:16px;
+}
+.delete { background:#ffe7e7; color:#a12b2b; }
+.stats {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.stat {
+  background:#edf3f0;
+  border-radius:10px;
+  padding:14px;
+}
+.stat small { color:#64736c; }
+.stat strong {
+  display:block;
+  font-size:23px;
+  margin-top:7px;
+}
+.green { color:#168354; }
+.entry {
+  border:1px solid #e1e4e8;
+  border-radius:10px;
+  padding:13px;
+  margin-top:10px;
+}
+.entry-top {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+.muted { color:#737d88; font-size:13px; }
+.total {
+  background:#edf3f0;
+  padding:18px;
+  border-radius:10px;
+  text-align:center;
+}
+.total strong {
+  font-size:28px;
+  color:#168354;
+}
+.actions {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.actions button { flex:1; }
+.secondary { background:#e8eeeb; color:#263c37; }
+@media print {
+  body { background:white; }
+  header { background:white; color:black; }
+  .no-print, .delete { display:none!important; }
+  main { max-width:100%; padding:0; }
+  .card { box-shadow:none; border:1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💆 ניהול טיפולי ספא</h1>
+  <div>מערכת לניהול עמלות חודשיות</div>
+  <div>העמלה שלך: 35%</div>
+</header>
+
+<main>
+
+<section class="card no-print">
+  <h2>➕ הוספת טיפול חדש</h2>
+
+  <form id="massageForm">
+    <label>תאריך הטיפול</label>
+    <input type="date" id="date" required>
+
+    <label>שעת התחלה</label>
+    <input type="time" id="time" required>
+
+    <label>משך הטיפול</label>
+    <select id="duration">
+      <option value="30">30 דקות</option>
+      <option value="45">45 דקות</option>
+      <option value="60" selected>60 דקות</option>
+      <option value="75">75 דקות</option>
+      <option value="90">90 דקות</option>
+      <option value="120">120 דקות</option>
+    </select>
+
+    <label>סוג העיסוי</label>
+    <input id="type" placeholder="לדוגמה: עיסוי שוודי" required>
+
+    <label>מחיר הטיפול (₪)</label>
+    <input type="number" id="price"
+      min="0.01" step="0.01" placeholder="300" required>
+
+    <div class="total" style="margin-top:14px">
+      <div>העמלה שלך (35%)</div>
+      <strong id="preview">0.00 ₪</strong>
+    </div>
+
+    <button class="primary" type="submit">
+      שמירת הטיפול
+    </button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>📊 דוח חודשי</h2>
+  <div class="no-print">
+    <label>בחירת חודש</label>
+    <input type="month" id="month">
+  </div>
+
+  <div class="stats" style="margin-top:15px">
+    <div class="stat">
+      <small>מספר טיפולים</small>
+      <strong id="count">0</strong>
+    </div>
+    <div class="stat">
+      <small>סה"כ עמלות</small>
+      <strong id="commission">0 ₪</strong>
+    </div>
+    <div class="stat">
+      <small>כבר התקבל</small>
+      <strong id="received">0 ₪</strong>
+    </div>
+    <div class="stat">
+      <small>יתרה לתשלום</small>
+      <strong id="remaining">0 ₪</strong>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>📋 רשימת טיפולים</h2>
+  <div id="entries"></div>
+</section>
+
+<section class="card">
+  <h2>🧾 חשבון חודשי לספא</h2>
+  <div id="invoice"></div>
+  <div class="actions no-print">
+    <button class="primary" onclick="printInvoice()">
+      הפקת חשבונית / PDF
+    </button>
+    <button class="secondary" onclick="exportCSV()">
+      ייצוא Excel / CSV
+    </button>
+  </div>
+</section>
+
+</main>
+
+<script>
+const RATE = 0.35;
+const STORAGE_KEY = "spa-massage-records-v1";
+
+let records = [];
+let payments = {};
+
+const $ = id => document.getElementById(id);
+
+function money(n) {
+  return Number(n).toLocaleString("he-IL", {
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  }) + " ₪";
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    records, payments
+  }));
+}
+
+function load() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (Array.isArray(data)) {
+      records = data;
+    } else if (data && typeof data === "object") {
+      records = Array.isArray(data.records) ? data.records : [];
+      payments = data.payments || {};
+    }
+  } catch(e) {
+    records = [];
+    payments = {};
+  }
+}
+
+function currentMonth() {
+  return $("month").value;
+}
+
+function monthlyRecords() {
+  return records.filter(r =>
+    r.date.startsWith(currentMonth())
+  ).sort((a,b) =>
+    (a.date+a.time).localeCompare(b.date+b.time)
+  );
+}
+
+function commission(price) {
+  return Math.round(price * RATE * 100) / 100;
+}
+
+function updatePreview() {
+  const p = Number($("price").value) || 0;
+  $("preview").textContent = money(commission(p));
+}
+
+$("price").addEventListener("input", updatePreview);
+
+$("massageForm").addEventListener("submit", e => {
+  e.preventDefault();
+
+  const price = Number($("price").value);
+
+  if (!Number.isFinite(price) || price <= 0) {
+    alert("נא להזין מחיר תקין");
+    return;
+  }
+
+  const record = {
+    id: crypto.randomUUID(),
+    date: $("date").value,
+    time: $("time").value,
+    duration: Number($("duration").value),
+    type: $("type").value.trim(),
+    price,
+    commission: commission(price)
+  };
+
+  if (!record.date || !record.time || !record.type) {
+    alert("נא למלא את כל הפרטים");
+    return;
+  }
+
+  records.push(record);
+  save();
+
+  $("month").value = record.date.slice(0,7);
+  $("massageForm").reset();
+  $("date").value = new Date().toLocaleDateString("en-CA");
+  $("duration").value = "60";
+  updatePreview();
+  render();
+});
+
+function deleteRecord(id) {
+  if (!confirm("למחוק את הטיפול?")) return;
+  records = records.filter(r => r.id !== id);
+  save();
+  render();
+}
+
+function setReceived(value) {
+  const total = monthlyRecords().reduce(
+    (s,r) => s+r.commission, 0
+  );
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount < 0 || amount > total) {
+    alert("נא להזין סכום תקין");
+    return;
+  }
+
+  payments[currentMonth()] = amount;
+  save();
+  render();
+}
+
+function render() {
+  const list = monthlyRecords();
+  const total = list.reduce((s,r) => s+r.commission, 0);
+  const received = Number(payments[currentMonth()] || 0);
+  const remaining = Math.max(0,total-received);
+
+  $("count").textContent = list.length;
+  $("commission").textContent = money(total);
+  $("received").textContent = money(received);
+  $("remaining").textContent = money(remaining);
+
+  $("entries").innerHTML = "";
+
+  if (!list.length) {
+    $("entries").textContent = "אין טיפולים בחודש זה";
+  }
+
+  list.forEach(r => {
+    const div = document.createElement("div");
+    div.className = "entry";
+
+    const top = document.createElement("div");
+    top.className = "entry-top";
+
+    const title = document.createElement("strong");
+    title.textContent = r.type;
+
+    const amount = document.createElement("strong");
+    amount.className = "green";
+    amount.textContent = money(r.commission);
+
+    top.append(title,amount);
+
+    const info = document.createElement("p");
+    info.className = "muted";
+    info.textContent =
+      `${r.date} | ${r.time} | ${r.duration} דקות`;
+
+    const price = document.createElement("p");
+    price.className = "muted";
+    price.textContent = "עמלה: 35%";
+
+    const del = document.createElement("button");
+    del.className = "delete no-print";
+    del.textContent = "מחיקה";
+    del.onclick = () => deleteRecord(r.id);
+
+    div.append(top,info,price,del);
+    $("entries").appendChild(div);
+  });
+
+  renderInvoice(list,total,received,remaining);
+}
+
+function renderInvoice(list,total,received,remaining) {
+  const area = $("invoice");
+  area.innerHTML = "";
+
+  const heading = document.createElement("h3");
+  heading.textContent = "דוח טיפולים חודשי לספא";
+
+  const period = document.createElement("p");
+  period.textContent = "חודש: " + currentMonth();
+
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+
+  const headers = [
+    "תאריך","שעה","משך","סוג טיפול","עמלה"
+  ];
+
+  const tr = document.createElement("tr");
+  headers.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    th.style.borderBottom = "1px solid #ccc";
+    th.style.padding = "8px 3px";
+    tr.appendChild(th);
+  });
+  table.appendChild(tr);
+
+  list.forEach(r => {
+    const row = document.createElement("tr");
+    [
+      r.date,r.time,r.duration+" דק׳",
+      r.type,money(r.commission)
+    ].forEach(value => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      td.style.padding = "8px 3px";
+      td.style.borderBottom = "1px solid #eee";
+      row.appendChild(td);
+    });
+    table.appendChild(row);
+  });
+
+  const summary = document.createElement("div");
+  summary.className = "total";
+  summary.style.marginTop = "15px";
+  summary.innerHTML = `
+    <p>מספר טיפולים: ${list.length}</p>
+    <p>אחוז עמלה: 35%</p>
+    <p>סה"כ עמלות: <strong>${money(total)}</strong></p>
+    <p>כבר התקבל: ${money(received)}</p>
+    <p>יתרה לתשלום: <strong>${money(remaining)}</strong></p>
+  `;
+
+  const paymentLabel = document.createElement("label");
+  paymentLabel.className = "no-print";
+  paymentLabel.textContent = "עדכון סכום שהתקבל מהספא";
+
+  const paymentInput = document.createElement("input");
+  paymentInput.className = "no-print";
+  paymentInput.type = "number";
+  paymentInput.min = "0";
+  paymentInput.step = "0.01";
+  paymentInput.value = received;
+
+  const paymentButton = document.createElement("button");
+  paymentButton.className = "secondary no-print";
+  paymentButton.style.width = "100%";
+  paymentButton.style.marginTop = "8px";
+  paymentButton.textContent = "שמירת תשלום שהתקבל";
+  paymentButton.onclick = () => setReceived(paymentInput.value);
+
+  area.append(heading,period,table,summary,
+    paymentLabel,paymentInput,paymentButton);
+}
+
+function printInvoice() {
+  window.print();
+}
+
+function exportCSV() {
+  const list = monthlyRecords();
+  const rows = [
+    ["תאריך","שעה","משך בדקות","סוג טיפול","עמלה"]
+  ];
+
+  list.forEach(r => rows.push([
+    r.date,r.time,r.duration,r.type,r.commission
+  ]));
+
+  const csv = "\uFEFF" + rows.map(row =>
+    row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
+  ).join("\r\n");
+
+  const blob = new Blob([csv], {
+    type:"text/csv;charset=utf-8;"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "spa-report-" + currentMonth() + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+$("month").addEventListener("change",render);
+
+load();
+
+const now = new Date();
+$("date").value = [
+  now.getFullYear(),
+  String(now.getMonth()+1).padStart(2,"0"),
+  String(now.getDate()).padStart(2,"0")
+].join("-");
+
+$("month").value = $("date").value.slice(0,7);
+
+updatePreview();
+render();
+</script>
+</body>
+</html>
